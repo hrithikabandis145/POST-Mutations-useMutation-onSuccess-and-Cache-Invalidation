@@ -22,7 +22,9 @@
 // Verify in DevTools → Network: a POST /api/threads (201) is followed immediately
 // by a GET /api/threads refetch, and the new thread appears at the top with no reload.
 // ─────────────────────────────────────────────────────────────
+
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createThread } from "../services/threads.service";
 
 export default function CreateThreadForm() {
@@ -30,12 +32,24 @@ export default function CreateThreadForm() {
   const [body, setBody] = useState("");
 
   // TODO: const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: createThread,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["threads"] });
+      setTitle("");
+      setBody("");
+    },
+  });
+
   // TODO: const mutation = useMutation({ mutationFn: createThread, onSuccess, onError });
 
   function handleSubmit(e) {
     e.preventDefault();
+
     // TODO: replace this with mutation.mutate({ title, body })
-    console.log("submit", { title, body });
+    mutation.mutate({ title, body });
   }
 
   return (
@@ -45,14 +59,22 @@ export default function CreateThreadForm() {
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Title"
       />
+
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder="What's on your mind?"
       />
+
       {/* TODO: disable while mutation.isPending; show "Posting…" as the label */}
-      <button type="submit">Post thread</button>
+      <button type="submit" disabled={mutation.isPending}>
+        {mutation.isPending ? "Posting…" : "Post thread"}
+      </button>
+
       {/* TODO: render <p className="err">{mutation.error.message}</p> when mutation.isError */}
+      {mutation.isError && (
+        <p className="err">{mutation.error.message}</p>
+      )}
     </form>
   );
 }
